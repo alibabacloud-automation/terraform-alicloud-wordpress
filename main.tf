@@ -5,6 +5,7 @@ variable "region" {
 provider "alicloud" {
   region = var.region
 }
+
 data "alicloud_vpcs" "default" {
   is_default = true
 }
@@ -54,7 +55,6 @@ resource "null_resource" "this" {
 }
 
 resource "null_resource" "this2" {
-
   provisioner "remote-exec" {
     connection {
       type     = "ssh"
@@ -87,7 +87,6 @@ module "rds" {
     "11.193.54.0/24",
     "121.43.18.0/24"
   ]
-
   tags = {
     Created     = "Terraform"
     Environment = "dev"

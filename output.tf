@@ -6,6 +6,7 @@ output "this_host_name" {
 }
 
 output "availability_zone" {
+
   value = alicloud_instance.this.availability_zone
 }
 output "this_image_id" {
