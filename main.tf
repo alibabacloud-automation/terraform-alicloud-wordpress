@@ -5,33 +5,36 @@ default = "cn-shanghai"
 provider "alicloud" {
   region = var.region
 }
-data "alicloud_vpcs" "default" {
-  is_default = true
-}
+//data "alicloud_vpcs" "default" {
+//  is_default = true
+//}
 
 module "sg" {
   source              = "alibaba/security-group/alicloud"
   region  = var.region
-  vpc_id  =data.alicloud_vpcs.default.vpcs.0.id
+  vpc_id  =data.alicloud_db_instances.this.instances.0.vpc_id
   name = "test-lex-1"
   ingress_cidr_blocks = ["0.0.0.0/0"]
   ingress_rules       = ["all-all"]
 }
 
+data "alicloud_db_instances" "this" {
+  ids = ["rm-uf66042s5886gp3jm"]
+}
 
 data "alicloud_images" "centos6" {
   most_recent = true
-  name_regex  = "centos_6"
+  name_regex  = "centos_7"
 }
 resource "alicloud_instance" "this" {
   instance_name        = "myDBInstance3"
   host_name            = "ecs-rds-wp"
-  password             = "123456qWe"
+  password             = "YourPassword123"
   image_id             = data.alicloud_images.centos6.ids.0
   instance_type        = "ecs.c5.large"//"ecs.n4.small"
   system_disk_category = "cloud_efficiency"
   security_groups      = [module.sg.this_security_group_id]
-  vswitch_id           = data.alicloud_vpcs.default.vpcs.0.vswitch_ids.0
+  vswitch_id           = data.alicloud_db_instances.this.instances.0.vswitch_id
   internet_max_bandwidth_out=10
   //depends_on = [module.rds]
 //  provisioner "file" {
@@ -60,28 +63,28 @@ resource "null_resource" "this" {
     connection {
       type = "ssh"
       user = "root"
-      password = "123456qWe"
+      password = "YourPassword123"
       host = alicloud_instance.this.public_ip
     }
   }
 }
 
-//resource "null_resource" "this2" {
-//
-//  provisioner "remote-exec" {
-//    connection {
-//      type     = "ssh"
-//      user     = "root"
-//      password = "123456qWe"
-//      host     = alicloud_instance.this.public_ip
-//    }
-//    inline = [
-//      "chmod +x /tmp/wp.sh",
-//      "/tmp/wp.sh args",
-//    ]
-//  }
-//  depends_on = [null_resource.this]
-//}
+resource "null_resource" "this2" {
+
+  provisioner "remote-exec" {
+    connection {
+      type     = "ssh"
+      user     = "root"
+      password = "YourPassword123"
+      host     = alicloud_instance.this.public_ip
+    }
+    inline = [
+      "chmod +x /tmp/wp.sh",
+      "/tmp/wp.sh args",
+    ]
+  }
+  depends_on = [null_resource.this]
+}
 
 
 
