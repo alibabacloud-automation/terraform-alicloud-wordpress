@@ -6,7 +6,8 @@ output "this_host_name" {
 }
 
 output "availability_zone" {
-  value       = alicloud_instance.this.availability_zone
+
+  value = alicloud_instance.this.availability_zone
 }
 output "this_image_id" {
   value = alicloud_instance.this.image_id
@@ -18,7 +19,7 @@ output "this_system_disk_category" {
   value = alicloud_instance.this.system_disk_category
 }
 output "group_ids" {
-  value       = alicloud_instance.this.security_groups
+  value = alicloud_instance.this.security_groups
 }
 output "this_vswitch_id" {
   value = alicloud_instance.this.vswitch_id
