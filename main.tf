@@ -1,9 +1,11 @@
 
-variable "region" {
-  default = "cn-hangzhou"
-}
 provider "alicloud" {
-  region = var.region
+  version                 = ">=1.64.0"
+  profile                 = var.profile != "" ? var.profile : null
+  shared_credentials_file = var.shared_credentials_file != "" ? var.shared_credentials_file : null
+  region                  = var.region != "" ? var.region : local.region
+  skip_region_validation  = var.skip_region_validation
+  configuration_source    = "terraform-alicloud-modules/wordpress"
 }
 
 data "alicloud_vpcs" "default" {
@@ -13,12 +15,13 @@ locals {
   db_name          = "your_db_name"
   account_name     = "account1"
   account_password = "your_password"
-  local_host       = module.rds.this_db_instance_connection_string
+  local_host       = module.mysql.this_db_instance_connection_string
+  region           = var.region != "" ? var.region : "cn-hangzhou"
 }
 
 module "sg" {
   source              = "alibaba/security-group/alicloud"
-  region              = var.region
+  region              = local.region
   vpc_id              = data.alicloud_vpcs.default.ids.0
   name                = "test-lex-1"
   ingress_cidr_blocks = ["0.0.0.0/0"]
@@ -39,6 +42,12 @@ resource "alicloud_instance" "this" {
   security_groups            = [module.sg.this_security_group_id]
   vswitch_id                 = data.alicloud_vpcs.default.vpcs.0.vswitch_ids.0
   internet_max_bandwidth_out = 10
+  data_disks {
+    name        = "disk1"
+    size        = "20"
+    category    = "cloud"
+    description = "disk1"
+  }
 }
 
 resource "null_resource" "this" {
@@ -69,32 +78,35 @@ resource "null_resource" "this2" {
   }
   depends_on = [null_resource.this]
 }
+module "mysql" {
+  source = "terraform-alicloud-modules/rds-mysql/alicloud"
+  region = local.region
 
-module "rds" {
-  source               = "terraform-alicloud-modules/rds/alicloud"
-  engine               = "MySQL"
-  engine_version       = "5.6"
-  region               = var.region
-  allocate_public_connection=false
-  vswitch_id           = alicloud_instance.this.vswitch_id
+  ###############
+  #Rds Instance#
+  ###############
+
+  engine_version       = "5.7"
+  connection_prefix    = "developmentabc"
+  vswitch_id           = "vsw-bp1tili2u5kxxxxxx"
   instance_storage     = 20
-  security_group_ids   = [module.sg.this_security_group_id]
-  period               = 1
-  instance_type        = "rds.mysql.t1.small"
-  instance_name        = "myDBInstancemodule"
+  instance_type        = "rds.mysql.s2.large"
+  instance_name        = "myDBInstance"
   instance_charge_type = "Postpaid"
   security_ips = [
     "11.193.54.0/24",
     "121.43.18.0/24"
   ]
+
   tags = {
-    Created     = "Terraform"
+    Created      = "Terraform"
     Environment = "dev"
   }
 
   ###############
   #backup_policy#
   ###############
+
   preferred_backup_period     = ["Monday", "Wednesday"]
   preferred_backup_time       = "00:00Z-01:00Z"
   backup_retention_period     = 7
@@ -104,6 +116,7 @@ module "rds" {
   ###########
   #databases#
   ###########
+
   account_name = local.account_name
   password     = local.account_password
   type         = "Normal"
@@ -113,8 +126,12 @@ module "rds" {
       name          = local.db_name
       character_set = "utf8"
       description   = "db1"
-    },
+    }
   ]
+
+  #############
+  # cms_alarm
+  #############
+
+ enabled =false
 }
-
-
