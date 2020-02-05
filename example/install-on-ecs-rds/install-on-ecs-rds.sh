@@ -29,4 +29,3 @@ usermod -d $WebRootPath apache &>/dev/null
 chown apache:apache -R $WebRootPath
 sed -i "s/$ApacheIndex/$ApacheIndexReplace/" /etc/httpd/conf/httpd.conf
 service httpd start
-
