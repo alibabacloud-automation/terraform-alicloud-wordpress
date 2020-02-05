@@ -27,6 +27,11 @@ variable "region" {
 # ECS instance
 ##################
 
+variable "create_rds_mysql" {
+  description = "Whether to create RDS MySql database. If false, this module will create MySql database on ECS."
+  type        = bool
+  default     = false
+}
 variable "ecs_instance_name" {
   description = "Name to be used on all resources as prefix. Default to 'TF-Module-ECS-Instance'."
   type        = string
@@ -43,7 +48,7 @@ variable "ecs_password" {
   default     = ""
 }
 variable "image_id" {
-  description = "The image id used to launch one ecs instances, Used to build wordpress."
+  description = "The image id used to launch one ecs instances, Used to build wordpress (Support CentOS only)."
   type        = string
   default     = ""
 }
@@ -196,47 +201,45 @@ variable "mysql_connection_port" {
 #################
 # MySQL Database
 #################
-variable "create_database" {
-  description = "Whether to create multiple databases. If true, the `databases` should not be empty."
-  type        = bool
-  default     = true
-}
+
 variable "databases" {
   description = "A list mapping used to add multiple databases. Each item supports keys: name, character_set and description. It should be set when create_database = true."
   type        = list(map(string))
   default     = []
 }
+variable "database_name" {
+  description = "Name of a new database . It should be set when create_databases = true."
+  type        = string
+  default     = ""
+}
+variable "database_character_set" {
+  description = "The value range is limited to the following."
+  type        = string
+  default     = "utf8"
+}
+
 #################
 # MySQL Database account
 #################
-variable "create_account" {
-  description = "Whether to create a new account. If true, the `account_name` should not be empty."
-  type        = bool
-  default     = true
-}
-variable "account_name" {
+
+variable "database_account_name" {
   description = "Name of a new database account. It should be set when create_account = true."
   type        = string
   default     = ""
 }
-variable "account_password" {
+variable "database_account_password" {
   description = "Operation database account password. It may consist of letters, digits, or underlines, with a length of 6 to 32 characters."
   type        = string
   default     = ""
 }
-variable "account_type" {
+variable "database_account_type" {
   description = "Privilege type of account. Normal: Common privilege. Super: High privilege.Default to Normal."
   type        = string
   default     = "Normal"
 }
-variable "privilege" {
+variable "database_account_privilege" {
   description = "The privilege of one account access database."
   type        = string
   default     = "ReadOnly"
 }
 
-variable "db_instance_id" {
-  description = "The Id of instance in which database belongs."
-  type        = string
-  default     = ""
-}
