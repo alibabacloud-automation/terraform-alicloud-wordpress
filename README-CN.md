@@ -1,37 +1,75 @@
-Terraform模块，部署基于阿里云ECS实例和云数据库Mysql的wordpress
-
 terraform-alicloud-wordpress
 =====================================================================
 
+本 Terraform 模块将基于阿里云 ECS 实例和云数据库 MySql 来部署的 Wordpress。
+
+本模版根据 MySql 数据库的安装方式提供了两种 Wordpress 的部署方式：
+
+1. 设置参数 `create_rds_mysql = false`，直接在 ECS Instance 上安装 MySql 并完成 Worepress 的部署。
+2. 设置参数 `create_rds_mysql = true`，创建一个新的 Rds MySql，然后在 ECS Instance 上完成 Worepress 的部署。
+
+## Terraform 版本
+
+本模板要求使用版本 Terraform 0.12 和 阿里云 Provider 1.56.0+。
+
 ## 用法
 
+#### Create a RDS mysql to deploy wordpress
+
 ```hcl
-module "wp" {
-  source            = "terraform-alicloud-modules/wordrpress/alicloud"
-  create_rds_mysql = true
-  region            = "cn-hangzhou"
-  db_name           = "your_db_name"
-  account_name      = "account1"
-  account_password  = "your_password"
+module "wordpress" {
+  source = "terraform-alicloud-modules/wordrpress/alicloud"
+  region = var.region
+
+  create_rds_mysql             = true
+  mysql_engine_version         = "5.7"
+  mysql_instance_type          = "rds.mysql.s2.large"
+  mysql_database_name          = "wordpress"
+  mysql_database_character_set = "utf8"
+  mysql_account_name           = "wpuser"
+  mysql_account_password       = "Wp123456"
   ###########
   # ECS
   ###########
   ecs_instance_name          = "myDBInstance3"
-  ecs_host_name              = "ecs-rds-wp"
-  ecs_password               = "YourPassword123"
-  ecs_instance_type          = "ecs.n1.7xlarge"
+  ecs_instance_password      = "YourPassword123"
+  ecs_instance_type          = "ecs.sn1ne.large"
   system_disk_category       = "cloud_efficiency"
-  security_groups            = ["1.1.1.1"]
-  vswitch_id                 = data.alicloud_vpcs.default.vpcs.0.vswitch_ids.0
-  internet_max_bandwidth_out = 10
+  security_group_ids         = ["sg-345678"]
+  vswitch_id                 = "vsw-345678"
+  internet_max_bandwidth_out = 50
 }
 ```
 
+#### Use mysql on ecs to deploy wordpress
+
+```hcl
+module "wordpress" {
+  source = "terraform-alicloud-modules/wordrpress/alicloud"
+  region = var.region
+
+  create_rds_mysql             = false
+  mysql_database_name          = "wordpress"
+  mysql_database_character_set = "utf8"
+  mysql_account_name           = "wpuser"
+  mysql_account_password       = "YourDBPwd"
+  ###########
+  # ECS
+  ###########
+  ecs_instance_name          = "myDBInstance3"
+  ecs_instance_password      = "YourPassword123"
+  ecs_instance_type          = "ecs.sn1ne.large"
+  system_disk_category       = "cloud_efficiency"
+  security_group_ids         = ["sg-45678"]
+  vswitch_id                 = "vsw-345678"
+  internet_max_bandwidth_out = 50
+} 
+```
 
 ## 示例
 
-* [install-on-ecs example](https://github.com/terraform-alicloud-modules/terraform-alicloud-wordpress/tree/master/examples/install-on-ecs)
-* [install-on-ecs-rds example](https://github.com/terraform-alicloud-modules/terraform-alicloud-wordpress/tree/master/examples/install-on-ecs-rds)
+* [在 ECS 上部署 Wordpress 示例](https://github.com/terraform-alicloud-modules/terraform-alicloud-wordpress/tree/master/examples/install-on-ecs)
+* [在 ECS 和 RDS 上部署 Wordpress 示例](https://github.com/terraform-alicloud-modules/terraform-alicloud-wordpress/tree/master/examples/install-on-ecs-and-rds)
 
 ## 注意事项
 

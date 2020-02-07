@@ -1,5 +1,8 @@
 #!/bin/sh
 
+DatabaseName=$1
+DatabaseUser=$2
+DatabasePwd=$3
 WebRootPath='/var/www/html/'
 ApacheIndex='Options Indexes FollowSymLinks'
 ApacheIndexReplace='Options Indexes FollowSymLinks'
@@ -21,9 +24,11 @@ wget https://ros-userdata-resources.oss-cn-beijing.aliyuncs.com/WordPress/WordPr
 unzip WordPress.zip
 mv WordPress-master wordpress
 cp wordpress/wp-config-sample.php wordpress/backup-wp-config.php
-sed -i "s/database_name_here/$1/" wordpress/wp-config-sample.php
-sed -i "s/username_here/$2/" wordpress/wp-config-sample.php
-sed -i "s/password_here/$3/" wordpress/wp-config-sample.php
+
+sed -i "s/database_name_here/$DatabaseName/" wordpress/wp-config-sample.php
+sed -i "s/username_here/$DatabaseUser/" wordpress/wp-config-sample.php
+sed -i "s/password_here/${DatabasePwd:-$DatabasePwdDef}/" wordpress/wp-config-sample.php
+
 mv wordpress/wp-config-sample.php wordpress/wp-config.php
 cp -a wordpress/* $WebRootPath
 rm -rf wordpress*
@@ -32,4 +37,15 @@ usermod -d $WebRootPath apache &>/dev/null
 chown apache:apache -R $WebRootPath
 sed -i "s/$ApacheIndex/$ApacheIndexReplace/" /etc/httpd/conf/httpd.conf
 service httpd start
+service mysqld stop
+
+chmod 400 /etc/my.cnf
+mysqld --user=mysql --skip-grant-tables --skip-networking &
+mysql -u root << EOF
+CREATE DATABASE $DatabaseName default charset utf8 COLLATE utf8_general_ci;
+flush privileges;
+CREATE USER $DatabaseUser IDENTIFIED by '$DababasePwd';
+grant all on $DatabaseName.* to $DatabaseUser@localhost identified by '$DatabasePwd';
+EOF
+
 service mysqld start

@@ -1,125 +1,151 @@
-
 provider "alicloud" {
-  version                 = ">=1.64.0"
   profile                 = var.profile != "" ? var.profile : null
   shared_credentials_file = var.shared_credentials_file != "" ? var.shared_credentials_file : null
-  region                  = var.region != "" ? var.region : local.region
+  region                  = var.region != "" ? var.region : null
   skip_region_validation  = var.skip_region_validation
   configuration_source    = "terraform-alicloud-modules/wordpress"
 }
-data "alicloud_images" "centos7" {
+
+data "alicloud_images" "centos" {
   most_recent = true
   name_regex  = "centos_7"
 }
 
 locals {
-  create_rds_mysql   = var.create_rds_mysql
-  region             = var.region != "" ? var.region : "cn-hangzhou"
-  local_host         = local.create_rds_mysql == true ? module.mysql.this_db_instance_connection_string : ""
-  wordpress_install  = var.create_rds_mysql == true ? "install-on-ecs-rds.sh" : "install-on-ecs.sh"
-  create_db_instance = local.create_rds_mysql == true ? true : false
+  local_host             = var.create_rds_mysql == true ? module.mysql.this_db_instance_connection_string : ""
+  wordpress_install      = var.create_rds_mysql == true ? "install-on-ecs-and-rds.sh" : "install-on-ecs.sh"
+  wordpress_install_file = var.create_rds_mysql == true ? "${path.module}/install-on-ecs-and-rds.sh" : "${path.module}/install-on-ecs.sh"
   databse = [
     {
-      name          = var.database_name
-      character_set = var.database_character_set
-      description   = "db1"
+      name          = var.mysql_database_name
+      character_set = var.mysql_database_character_set
+      description   = "A MySql database used to deploy wordpress."
     }
   ]
 }
 
-resource "alicloud_instance" "this" {
-  instance_name              = var.ecs_instance_name
-  host_name                  = var.ecs_host_name
-  password                   = var.ecs_password
-  image_id                   = var.image_id != "" ? var.image_id : data.alicloud_images.centos7.ids.0
-  instance_type              = var.ecs_instance_type
-  system_disk_category       = var.system_disk_category
-  security_groups            = var.security_groups
-  vswitch_id                 = var.vswitch_id
-  internet_max_bandwidth_out = var.internet_max_bandwidth_out
+# Create an ECS Instance to deploy wordpress
+module "ecs-instance" {
+  source                  = "alibaba/ecs-instance/alicloud"
+  profile                 = var.profile != "" ? var.profile : null
+  shared_credentials_file = var.shared_credentials_file != "" ? var.shared_credentials_file : null
+  region                  = var.region != "" ? var.region : null
+  skip_region_validation  = var.skip_region_validation
+
+  number_of_instances = 1
+  use_num_suffix      = false
+
+  instance_name = var.ecs_instance_name
+  password      = var.ecs_instance_password
+  image_id      = var.image_id != "" ? var.image_id : data.alicloud_images.centos.ids.0
+  instance_type = var.ecs_instance_type
+
+  instance_charge_type = "PostPaid"
+  system_disk_category = var.system_disk_category
+  system_disk_size     = var.system_disk_size
+
+  security_group_ids = var.security_group_ids
+  vswitch_ids        = [var.vswitch_id]
+  private_ips        = [var.private_ip]
+
+  internet_charge_type        = var.internet_charge_type
+  associate_public_ip_address = true
+  internet_max_bandwidth_out  = var.internet_max_bandwidth_out
+
+  resource_group_id   = var.resource_group_id
+  deletion_protection = var.deletion_protection
+  force_delete        = true
+  tags = merge(
+    {
+      Created     = "Terraform"
+      Application = "Wordpress"
+    }, var.tags,
+  )
+
+  data_disks  = var.data_disks
+  volume_tags = var.volume_tags
 }
 
-resource "null_resource" "this" {
-  provisioner "file" {
-    source      = local.wordpress_install
-    destination = "/tmp/${local.wordpress_install}"
-    connection {
-      type     = "ssh"
-      user     = "root"
-      password = "YourPassword123"
-      host     = alicloud_instance.this.public_ip
-    }
-  }
-}
-
-resource "null_resource" "this2" {
-  provisioner "remote-exec" {
-    connection {
-      type     = "ssh"
-      user     = "root"
-      password = "YourPassword123"
-      host     = alicloud_instance.this.public_ip
-    }
-    inline = [
-      "chmod +x /tmp/${local.wordpress_install}",
-      "/tmp/${local.wordpress_install} ${var.database_name}  ${var.database_account_name}  ${var.database_account_password}  ${local.local_host} ",
-    ]
-  }
-  depends_on = [null_resource.this]
-}
+// Create a rds mysql to store wordpress data
 module "mysql" {
-  source = "terraform-alicloud-modules/rds-mysql/alicloud"
-  region = var.region
+  source                  = "terraform-alicloud-modules/rds-mysql/alicloud"
+  profile                 = var.profile != "" ? var.profile : null
+  shared_credentials_file = var.shared_credentials_file != "" ? var.shared_credentials_file : null
+  region                  = var.region != "" ? var.region : null
+  skip_region_validation  = var.skip_region_validation
 
   ###############
   #Rds Instance#
   ###############
-  engine_version       = "5.7"
-  connection_prefix    = "developmentabc"
+  create_instance      = var.create_rds_mysql
+  engine_version       = var.mysql_engine_version
   vswitch_id           = var.vswitch_id
-  instance_storage     = 20
-  instance_type        = "rds.mysql.s2.large"
-  instance_name        = "myDBInstance"
+  instance_storage     = var.mysql_instance_storage
+  instance_type        = var.mysql_instance_type
+  instance_name        = var.mysql_instance_name
   instance_charge_type = "Postpaid"
-  security_ips = [
-    "11.193.54.0/24",
-    "121.43.18.0/24"
-  ]
 
-  tags = {
-    Created     = "Terraform"
-    Environment = "dev"
-  }
+  security_group_ids = var.security_group_ids
+
+  tags = merge(
+    {
+      Created     = "Terraform"
+      Application = "Wordpress"
+    }, var.tags,
+  )
 
   ###############
   #backup_policy#
   ###############
-
-  preferred_backup_period     = ["Monday", "Wednesday"]
+  create_backup_policy        = var.create_rds_mysql
+  preferred_backup_period     = ["Monday", "Wednesday", "Friday"]
   preferred_backup_time       = "00:00Z-01:00Z"
-  backup_retention_period     = 7
-  log_backup_retention_period = 7
+  backup_retention_period     = 100
+  log_backup_retention_period = 100
   enable_backup_log           = true
 
   ###########
   #databases#
   ###########
-  account_name = var.database_account_name
-  password     = var.database_account_password
-  type         = "Normal"
-  privilege    = "ReadWrite"
-  databases    = local.databse
+  create_account    = var.create_rds_mysql
+  account_name      = var.mysql_account_name
+  account_password  = var.mysql_account_password
+  account_type      = var.mysql_account_type
+  account_privilege = var.mysql_account_privilege
 
-  #############
-  # cms_alarm
-  #############
+  create_database = var.create_rds_mysql
+  databases       = local.databse
 
-  enabled         = false
-  cms_name        = "CmsAlarmForMysql"
-  statistics      = "Average"
-  cms_period      = 300
-  operator        = "<="
-  threshold       = 35
-  triggered_count = 2
-  contact_groups  = ["MySQL"]
+  enable_alarm_rule = false
+}
+
+# Upload deploy script
+resource "null_resource" "file" {
+  provisioner "file" {
+    source      = local.wordpress_install_file
+    destination = "/tmp/${local.wordpress_install}"
+    connection {
+      type     = "ssh"
+      user     = "root"
+      password = var.ecs_instance_password
+      host     = module.ecs-instance.this_public_ip.0
+    }
+  }
+}
+
+# deploy wordpress
+resource "null_resource" "remote" {
+  provisioner "remote-exec" {
+    connection {
+      type     = "ssh"
+      user     = "root"
+      password = var.ecs_instance_password
+      host     = module.ecs-instance.this_public_ip.0
+    }
+    inline = [
+      "chmod +x /tmp/${local.wordpress_install}",
+      "/tmp/${local.wordpress_install} ${var.mysql_database_name}  ${var.mysql_account_name}  ${var.mysql_account_password}  ${local.local_host} ",
+    ]
+  }
+  depends_on = [null_resource.file]
 }
