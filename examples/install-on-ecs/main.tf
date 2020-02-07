@@ -5,6 +5,10 @@ provider "alicloud" {
   region = var.region
 }
 
+############################################
+# Data sources to get VPC, vswitch details
+############################################
+
 data "alicloud_vpcs" "default" {
   is_default = true
 }
@@ -28,6 +32,10 @@ module "wordpress" {
   vswitch_id                 = data.alicloud_vpcs.default.vpcs.0.vswitch_ids.0
   internet_max_bandwidth_out = 50
 }
+
+##################################################################
+# Create a new security group using terraform module
+##################################################################
 module "security_group" {
   source              = "alibaba/security-group/alicloud"
   region              = var.region
