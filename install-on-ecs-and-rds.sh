@@ -17,10 +17,12 @@ wget https://ros-userdata-resources.oss-cn-beijing.aliyuncs.com/WordPress/WordPr
 unzip WordPress.zip
 mv WordPress-master wordpress
 cp wordpress/wp-config-sample.php wordpress/backup-wp-config.php
+
 sed -i "s/database_name_here/$1/" wordpress/wp-config-sample.php
 sed -i "s/username_here/$2/" wordpress/wp-config-sample.php
 sed -i "s/password_here/$3/" wordpress/wp-config-sample.php
 sed -i "s/localhost/$4/ " wordpress/wp-config-sample.php
+
 mv wordpress/wp-config-sample.php wordpress/wp-config.php
 cp -a wordpress/* $WebRootPath
 rm -rf wordpress*

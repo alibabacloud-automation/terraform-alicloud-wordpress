@@ -4,19 +4,28 @@ variable "region" {
 provider "alicloud" {
   region = var.region
 }
-
 data "alicloud_vpcs" "default" {
   is_default = true
+}
+data "alicloud_vswitches" "default" {
+  ids = [data.alicloud_vpcs.default.vpcs.0.vswitch_ids.0]
+}
+data "alicloud_db_instance_classes" "default" {
+  zone_id        = data.alicloud_vswitches.default.vswitches.0.zone_id
+  engine         = "MySQL"
+  engine_version = "5.7"
 }
 module "wordpress" {
   source = "../../"
   region = var.region
 
-  create_rds_mysql             = false
+  create_rds_mysql             = true
+  mysql_engine_version         = "5.7"
+  mysql_instance_type          = data.alicloud_db_instance_classes.default.instance_classes.0.instance_class
   mysql_database_name          = "wordpress"
   mysql_database_character_set = "utf8"
   mysql_account_name           = "wpuser"
-  mysql_account_password       = "YourDBPwd"
+  mysql_account_password       = "Wp123456"
   ###########
   # ECS
   ###########
