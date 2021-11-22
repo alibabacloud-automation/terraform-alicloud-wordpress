@@ -8,10 +8,6 @@ terraform-alicloud-wordpress
 1. 设置参数 `create_rds_mysql = false`，直接在 ECS Instance 上安装 MySql 并完成 Worepress 的部署。
 2. 设置参数 `create_rds_mysql = true`，创建一个新的 Rds MySql，然后在 ECS Instance 上完成 Worepress 的部署。
 
-## Terraform 版本
-
-本模板要求使用版本 Terraform 0.12 和 阿里云 Provider 1.56.0+。
-
 ## 用法
 
 #### Create a RDS mysql to deploy wordpress
@@ -19,7 +15,6 @@ terraform-alicloud-wordpress
 ```hcl
 module "wordpress" {
   source = "terraform-alicloud-modules/wordrpress/alicloud"
-  region = var.region
 
   create_rds_mysql             = true
   mysql_engine_version         = "5.7"
@@ -46,7 +41,6 @@ module "wordpress" {
 ```hcl
 module "wordpress" {
   source = "terraform-alicloud-modules/wordrpress/alicloud"
-  region = var.region
 
   create_rds_mysql             = false
   mysql_database_name          = "wordpress"
@@ -72,13 +66,78 @@ module "wordpress" {
 * [在 ECS 和 RDS 上部署 Wordpress 示例](https://github.com/terraform-alicloud-modules/terraform-alicloud-wordpress/tree/master/examples/install-on-ecs-and-rds)
 
 ## 注意事项
+本Module从版本v1.1.0开始已经移除掉如下的 provider 的显示设置：
 
-* This module using AccessKey and SecretKey are from `profile` and `shared_credentials_file`.
-If you have not set them yet, please install [aliyun-cli](https://github.com/aliyun/aliyun-cli#installation) and configure it.
+```hcl
+provider "alicloud" {
+  profile                 = var.profile != "" ? var.profile : null
+  shared_credentials_file = var.shared_credentials_file != "" ? var.shared_credentials_file : null
+  region                  = var.region != "" ? var.region : null
+  skip_region_validation  = var.skip_region_validation
+  configuration_source    = "terraform-alicloud-modules/wordpress"
+}
+```
+
+如果你依然想在Module中使用这个 provider 配置，你可以在调用Module的时候，指定一个特定的版本，比如 1.0.0:
+
+```hcl
+module "wordpress" {
+  source               = "terraform-alicloud-modules/wordrpress/alicloud"
+  version              = "1.0.0"
+  region               = "cn-shanghai"
+  profile              = "Your-Profile-Name"
+  create_rds_mysql     = true
+  mysql_engine_version = "5.7"
+  // ...
+}
+```
+
+如果你想对正在使用中的Module升级到 1.1.0 或者更高的版本，那么你可以在模板中显示定义一个系统过Region的provider：
+```hcl
+provider "alicloud" {
+  region  = "cn-shanghai"
+  profile = "Your-Profile-Name"
+}
+module "wordpress" {
+  source               = "terraform-alicloud-modules/wordrpress/alicloud"
+  create_rds_mysql     = true
+  mysql_engine_version = "5.7"
+  // ...
+}
+```
+或者，如果你是多Region部署，你可以利用 `alias` 定义多个 provider，并在Module中显示指定这个provider：
+
+```hcl
+provider "alicloud" {
+  region  = "cn-shanghai"
+  profile = "Your-Profile-Name"
+  alias   = "sh"
+}
+module "wordpress" {
+  source               = "terraform-alicloud-modules/wordrpress/alicloud"
+  providers            = {
+    alicloud = alicloud.sh
+  }
+  create_rds_mysql     = true
+  mysql_engine_version = "5.7"
+  // ...
+}
+```
+
+定义完provider之后，运行命令 `terraform init` 和 `terraform apply` 来让这个provider生效即可。
+
+更多provider的使用细节，请移步[How to use provider in the module](https://www.terraform.io/docs/language/modules/develop/providers.html#passing-providers-explicitly)
+
+## Terraform 版本
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.12.0 |
+| <a name="requirement_alicloud"></a> [alicloud](#requirement\_alicloud) | >= 1.56.0 |
 
 作者
 -------
-Created and maintained by Yi Jincheng(yi785301535@163.com) and He Guimin(@xiaozhu36, heguimin36@163.com)
+Created and maintained by Alibaba Cloud Terraform Team(terraform@alibabacloud.com)
 
 许可
 ----
