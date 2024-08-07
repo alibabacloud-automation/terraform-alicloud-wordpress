@@ -1,4 +1,7 @@
-## 1.2.0 (Unreleased)
+## 1.2.0 (August 07, 2024)
+
+- deprecate [GH-11](https://github.com/alibabacloud-automation/terraform-alicloud-wordpress/pull/11)
+
 ## 1.1.0 (December 10, 2021)
 
 ENHANCEMENTS:
